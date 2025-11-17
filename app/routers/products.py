@@ -13,23 +13,40 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-async def get_all_products():
-    """
-    Возвращает список всех товаров.
-    """
-    return {"message": "Список всех товаров (заглушка)"}
+async def check_category_id(category_id: int, db: Session) -> CategoryModel:
+    stmt = select(CategoryModel).where(CategoryModel.id == category_id, 
+                                       CategoryModel.is_active == True)
+    category_db = db.scalars(stmt).first()
+    if category_db is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found")
+    return category_db
 
 
+async def check_product_id(product_id: int, db: Session) -> ProductModel:
+    stmt = select(ProductModel).where(ProductModel.id == product_id, 
+                                      ProductModel.is_active == True)
+    product_db = db.scalars(stmt).first()
+    if product_db is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    return product_db
+
+
+@router.get("/", response_model=list[ProductSchema])
+async def get_all_products(db: Session = Depends(get_db)):
+    """
+    Возвращает список всех активных товаров.
+    """
+    stmt = select(ProductModel).where(ProductModel.is_active == True)
+    products_db = db.scalars(stmt).all()
+    return products_db
+
+    
 @router.post("/products/", response_model=ProductSchema)
 async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     """
     Создаёт новый товар.
     """
-    stmt = select(CategoryModel).where(CategoryModel.id == product.category_id)
-    category_db = db.scalars(stmt).first()
-    if category_db is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    check_category_id(product.category_id, db)
 
     product_db = ProductModel(**product.model_dump())
     db.add(product_db)
@@ -38,34 +55,56 @@ async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     return product_db
 
 
-@router.get("/category/{category_id}")
-async def get_products_by_category(category_id: int):
+@router.get("/category/{category_id}", response_model=list[ProductSchema])
+async def get_products_by_category(category_id: int, db: Session = Depends(get_db)):
     """
     Возвращает список товаров в указанной категории по её ID.
     """
-    return {"message": f"Товары в категории {category_id} (заглушка)"}
+    check_category_id(category_id, db)
+
+    stmt = select(ProductModel).where(ProductModel.category_id == category_id, 
+                                      ProductModel.is_active == True)
+    products_in_category_db = db.scalars(stmt).all()
+    return products_in_category_db
 
 
-@router.get("/{product_id}")
-async def get_product(product_id: int):
+@router.get("/{product_id}", response_model=ProductSchema)
+async def get_product(product_id: int, db: Session = Depends(get_db)):
     """
     Возвращает детальную информацию о товаре по его ID.
     """
-    return {"message": f"Детали товара {product_id} (заглушка)"}
+    product_db : ProductModel = check_product_id(product_id, db) 
+    check_category_id(product_db.category_id, db)
+    return product_db
 
 
-@router.put("/{product_id}")
-async def update_product(product_id: int):
+@router.put("/{product_id}", response_model=ProductSchema)
+async def update_product(product_id: int, product_update: ProductSchema, db: Session = Depends(get_db)):
     """
     Обновляет товар по его ID.
     """
-    return {"message": f"Товар {product_id} обновлён (заглушка)"}
+    product_db = check_product_id(product_id, db)
+    check_category_id(product_update.category_id, db)
+
+    db.execute(
+        update(ProductModel)
+        .where(ProductModel.id == product_id)
+        .values(**product_update.model_dump())
+    )
+    db.commit()
+    db.refresh(product_db)
+    return product_db
 
 
 @router.delete("/{product_id}")
-async def delete_product(product_id: int):
+async def delete_product(product_id: int, db : Session = Depends(get_db)):
     """
     Удаляет товар по его ID.
     """
-    return {"message": f"Товар {product_id} удалён (заглушка)"}
+    check_product_id(product_id, db)
+    
+    db.execute(update(ProductModel).where(ProductModel.id == product_id).values(is_active=False))
+    db.commit()
+
+    return {"status": "success", "message": "Product marked as inactive"}
 
