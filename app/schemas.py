@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from decimal import Decimal
 from typing import Annotated
 
@@ -8,9 +8,8 @@ class CategoryCreate(BaseModel):
     Модель для создания и обновления категории.
     Используется в POST и PUT запросах.
     """
-    name: Annotated[str, Field(min_length=3, max_length=50,
-                               description="Название категории (3-50 символов)")]
-    parent_id: Annotated[int | None, Field(description="ID родительской категории, если есть")] = None
+    name: str = Field(min_length=3, max_length=50, description="Название категории (3-50 символов)")
+    parent_id: int | None = Field(description="ID родительской категории, если есть")
 
 
 class Category(BaseModel):
@@ -54,7 +53,28 @@ class Product(BaseModel):
     stock: int = Field(description="Количество товара на складе")
     category_id: int = Field(description="ID категории")
     is_active: bool = Field(description="Активность товара")
-    
+    seller_id: int = Field(description="ID продавца")
     model_config = ConfigDict(from_attributes=True)
     
 
+class User(BaseModel):
+    """
+    Модель для ответа с данными пользователя.
+    Используется в GET-запросах.
+    """
+    id: int = Field(description="Уникальный идентификатор пользователя")
+    email: EmailStr = Field(description="Уникальный email пользователя")
+    is_active: bool = Field(description="Активность пользователя")
+    role: str = Field(description="роль пользователя")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserCreate(BaseModel):
+    """
+    Модель для создания и изменения данных пользователя.
+    Используется в POST/PUT-запросах.
+    """
+    password: str = Field(min_length=4, description="Пароль(минимум 4 символа)")
+    email: EmailStr = Field(description="Уникальный email пользователя")
+    role: str = Field(default="buyer", pattern="^(buyer|seller)$", description="Роль: 'buyer' или 'seller'")

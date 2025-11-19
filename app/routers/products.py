@@ -4,14 +4,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.products import Product as ProductModel
 from app.models.categories import Category as CategoryModel
+from app.models.users import User as UserModel
 from app.db_depends import get_async_db
 from app.schemas import Product as ProductSchema, ProductCreate
+from app.auth import get_current_seller
 
 
 router = APIRouter(
     prefix="/products",
     tags=["products"],
-)
+    )
 
 
 async def check_category_id(category_id: int, db: AsyncSession) -> CategoryModel:
@@ -48,13 +50,16 @@ async def get_all_products(db: AsyncSession = Depends(get_async_db)):
 
     
 @router.post("/products/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
-async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_async_db)):
+async def create_product(product: ProductCreate, 
+                         db: AsyncSession = Depends(get_async_db),
+                         current_user: UserModel = Depends(get_current_seller)
+                         ):
     """
-    Создаёт новый товар.
+    Создаёт новый товар текущего продавца(роль: 'seller').
     """
     await check_category_id(product.category_id, db)
 
-    product_db = ProductModel(**product.model_dump())
+    product_db = ProductModel(**product.model_dump(), seller_id=current_user.id)
     db.add(product_db)
     await db.commit()
     await db.refresh(product_db) 
@@ -86,11 +91,16 @@ async def get_product(product_id: int, db: AsyncSession = Depends(get_async_db))
 
 
 @router.put("/{product_id}", response_model=ProductSchema)
-async def update_product(product_id: int, product_update: ProductCreate, db: AsyncSession = Depends(get_async_db)):
+async def update_product(product_id: int, product_update: ProductCreate, 
+                         db: AsyncSession = Depends(get_async_db),
+                         current_user: UserModel = Depends(get_current_seller)
+                         ):
     """
-    Обновляет товар по его ID.
+    Обновляет товар текущего продавца по его ID(роль: 'seller').
     """
     product_db = await check_product_id(product_id, db)
+    if product_db.seller_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own products")
     await check_category_id(product_update.category_id, db)
 
     await db.execute(
@@ -104,13 +114,18 @@ async def update_product(product_id: int, product_update: ProductCreate, db: Asy
 
 
 @router.delete("/{product_id}")
-async def delete_product(product_id: int, db : AsyncSession = Depends(get_async_db)):
+async def delete_product(product_id: int, 
+                         db : AsyncSession = Depends(get_async_db),
+                         current_user: UserModel = Depends(get_current_seller)
+                         ):
     """
-    Удаляет товар по его ID.
+    Удаляет товар текущего продавца по его ID(роль: 'seller').
     """
     product_db: ProductModel = await check_product_id(product_id, db)
-    
+    if product_db.seller_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own products")
     product_db.is_active = False
     await db.commit()
-    return {"status": "success", "message": "Product marked as inactive"}
+    await db.refresh(product_db)
+    return product_db
 
