@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from decimal import Decimal
-from typing import Annotated
+from datetime import datetime
 
 
 class CategoryCreate(BaseModel):
@@ -54,6 +54,7 @@ class Product(BaseModel):
     category_id: int = Field(description="ID категории")
     is_active: bool = Field(description="Активность товара")
     seller_id: int = Field(description="ID продавца")
+
     model_config = ConfigDict(from_attributes=True)
     
 
@@ -78,3 +79,30 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=4, description="Пароль(минимум 4 символа)")
     email: EmailStr = Field(description="Уникальный email пользователя")
     role: str = Field(default="buyer", pattern="^(buyer|seller)$", description="Роль: 'buyer' или 'seller'")
+
+
+class Review(BaseModel):
+    """
+    Модель для ответа с отзовыми о товарах.
+    GET-запросы.
+    """
+    id: int = Field(description="Уникальный идентификатор отзыва")
+    user_id: int = Field(description="Уникальный идентификатор пользователя")
+    product_id: int = Field(description="Уникальный идентификатор товара")
+    comment: str | None = Field(None, max_length=1000,
+                                       description="Отзыв (до 1000 символов)")
+    comment_date: datetime = Field(description="Дата размещения отзыва(последней редакции)")
+    grade: int = Field(ge=1, le=5, description="Оценка товара")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReviewCreate(BaseModel):
+    """
+    Модель для создания отзыва
+    POST-запросы.
+    """
+    product_id: int = Field(description="Уникальный идентификатор товара")
+    comment: str | None = Field(None, max_length=1000,
+                                       description="Отзыв (до 1000 символов)")
+    grade: int = Field(ge=1, le=5, description="Оценка товара")

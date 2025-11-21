@@ -1,14 +1,16 @@
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Integer, Numeric, ForeignKey
+from sqlalchemy import String, Boolean, Integer, Numeric, ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from .categories import Category
     from .users import User
+    from .reviews import Review
 
 
 class Product(Base):
@@ -23,8 +25,10 @@ class Product(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False)
     seller_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    raiting: Mapped[float] = mapped_column(Float, default=0.0, server_default='0')
 
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     seller: Mapped["User"] = relationship("User", back_populates="products")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="product")
 
 

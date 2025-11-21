@@ -74,3 +74,9 @@ async def get_current_seller(current_user: UserModel = Depends(get_current_user)
     if current_user.role != "seller":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only sellers can perform this action")
     return current_user
+
+
+async def get_current_buyler(current_user: UserModel = Depends(get_current_user)):
+    if current_user.role != "buyler":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only buylers can perform this action")
+    return current_user
