@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.categories import Category as CategoryModel
 from app.schemas import Category as CategorySchema, CategoryCreate
-from app.db_depends import get_async_db
+from app.database.db_depends import get_async_db
 
 
 router = APIRouter(

@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database import Base
+from app.database.database import Base
 
 from typing import TYPE_CHECKING
 
@@ -21,5 +21,5 @@ class User(Base):
     role: Mapped[str] = mapped_column(String, default="buyer")
 
     products: Mapped[list["Product"]] = relationship("Product", back_populates="seller")
-    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="product")
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="user")
     

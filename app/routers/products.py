@@ -5,35 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.products import Product as ProductModel
 from app.models.categories import Category as CategoryModel
 from app.models.users import User as UserModel
-from app.db_depends import get_async_db
+from app.database.db_depends import get_async_db
 from app.schemas import Product as ProductSchema, ProductCreate
 from app.auth import get_current_seller
+from app.database.db_services import check_category_id, check_product_id
 
 
 router = APIRouter(
     prefix="/products",
     tags=["products"],
     )
-
-
-async def check_category_id(category_id: int, db: AsyncSession) -> CategoryModel:
-    stmt = select(CategoryModel).where(CategoryModel.id == category_id, 
-                                       CategoryModel.is_active == True)
-    result = await db.scalars(stmt)
-    category_db = result.first()
-    if category_db is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found or inactive")
-    return category_db
-
-
-async def check_product_id(product_id: int, db: AsyncSession) -> ProductModel:
-    stmt = select(ProductModel).where(ProductModel.id == product_id, 
-                                      ProductModel.is_active == True)
-    result = await db.scalars(stmt)
-    product_db = result.first()
-    if product_db is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
-    return product_db
 
 
 @router.get("/", response_model=list[ProductSchema])
@@ -49,7 +30,7 @@ async def get_all_products(db: AsyncSession = Depends(get_async_db)):
     return products_db
 
     
-@router.post("/products/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
 async def create_product(product: ProductCreate, 
                          db: AsyncSession = Depends(get_async_db),
                          current_user: UserModel = Depends(get_current_seller)

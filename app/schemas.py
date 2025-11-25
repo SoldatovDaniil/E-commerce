@@ -54,6 +54,7 @@ class Product(BaseModel):
     category_id: int = Field(description="ID категории")
     is_active: bool = Field(description="Активность товара")
     seller_id: int = Field(description="ID продавца")
+    raiting: float = Field(description="Средний рейтинг товара")
 
     model_config = ConfigDict(from_attributes=True)
     
@@ -103,6 +104,16 @@ class ReviewCreate(BaseModel):
     POST-запросы.
     """
     product_id: int = Field(description="Уникальный идентификатор товара")
+    comment: str | None = Field(None, max_length=1000,
+                                       description="Отзыв (до 1000 символов)")
+    grade: int = Field(ge=1, le=5, description="Оценка товара")
+
+
+class ReviewUpdate(BaseModel):
+    """
+    Модель для редактирования отзыва
+    PUT-запросы.
+    """
     comment: str | None = Field(None, max_length=1000,
                                        description="Отзыв (до 1000 символов)")
     grade: int = Field(ge=1, le=5, description="Оценка товара")

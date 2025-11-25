@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.config import ALGORITHM, SECRET_KEY
-from app.db_depends import get_async_db
+from app.database.db_depends import get_async_db
 from app.models.users import User as UserModel
 
 
@@ -76,7 +76,13 @@ async def get_current_seller(current_user: UserModel = Depends(get_current_user)
     return current_user
 
 
-async def get_current_buyler(current_user: UserModel = Depends(get_current_user)):
-    if current_user.role != "buyler":
+async def get_current_buyer(current_user: UserModel = Depends(get_current_user)):
+    if current_user.role != "buyer":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only buylers can perform this action")
+    return current_user
+
+
+async def get_current_admin(current_user: UserModel = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin can perform this action")
     return current_user

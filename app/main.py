@@ -11,6 +11,7 @@ app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(users.router)
 app.include_router(reviews.router)
+app.include_router(reviews.product_reviews_router)
 
 
 @app.get("/")
