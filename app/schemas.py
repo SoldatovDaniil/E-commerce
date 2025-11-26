@@ -117,3 +117,15 @@ class ReviewUpdate(BaseModel):
     comment: str | None = Field(None, max_length=1000,
                                        description="Отзыв (до 1000 символов)")
     grade: int = Field(ge=1, le=5, description="Оценка товара")
+
+
+class ProductList(BaseModel):
+    """
+    Список пагинации для товаров.
+    """
+    items: list[Product] = Field(description="Товары для текущей страницы")
+    total: int = Field(ge=0, description="Общее количество товаров")
+    page: int = Field(ge=1, description="Номер текущей страницы")
+    page_size: int = Field(ge=1, description="Количество элементов на странице")
+    
+    model_config = ConfigDict(from_attributes=True)

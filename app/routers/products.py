@@ -1,12 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, update
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.products import Product as ProductModel
 from app.models.categories import Category as CategoryModel
 from app.models.users import User as UserModel
 from app.database.db_depends import get_async_db
-from app.schemas import Product as ProductSchema, ProductCreate
+from app.schemas import Product as ProductSchema, ProductCreate, ProductList
 from app.auth import get_current_seller
 from app.database.db_services import check_category_id, check_product_id
 
@@ -17,19 +17,36 @@ router = APIRouter(
     )
 
 
-@router.get("/", response_model=list[ProductSchema])
-async def get_all_products(db: AsyncSession = Depends(get_async_db)):
+@router.get("/", response_model=ProductList)
+async def get_all_products(page: int = Query(1, ge=1),
+                           page_size: int = Query(20, ge=1, le=100),
+                           category_id: int | None = Query(None, description="ID категории для фильтрации"),
+                           min_price: float | None = Query(None, ge=0, description="Минимальная цена товара"),
+                           max_price: float | None = Query(None, ge=0, description="Максимальная цена товара"),
+                           in_stock: bool | None = Query(None, description="true — только товары в наличии, false — только без остатка"),
+                           seller_id: int | None = Query(None, description="ID продавца для фильтрации"),
+                           db: AsyncSession = Depends(get_async_db)
+                           ):
     """
-    Возвращает список всех активных товаров.
+    Возвращает список всех активных товаров(С пагинацией и фильтрацией).
     """
-    stmt = select(ProductModel).join(CategoryModel).where(ProductModel.is_active == True,
-                                                          CategoryModel.is_active == True
-                                                         ).order_by(ProductModel.id)
-    result = await db.scalars(stmt)
-    products_db = result.all()
-    return products_db
-
+    total = await db.scalar(select(func.count(ProductModel.id)).where(ProductModel.is_active == True)) or 0
+    product_stmt = (
+        select(ProductModel)
+        .where(ProductModel.is_active == True)
+        .order_by(ProductModel.id)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        )
+    products_db = (await db.scalars(product_stmt)).all()
+    return {
+        "items": products_db,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
     
+
 @router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
 async def create_product(product: ProductCreate, 
                          db: AsyncSession = Depends(get_async_db),
