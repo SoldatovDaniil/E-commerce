@@ -7,6 +7,7 @@ from app.models.categories import Category as CategoryModel
 from app.models.products import Product as ProductModel
 from app.models.reviews import Review as ReviewModel
 from app.models.cart_items import CartItem as CartItemModel
+from app.models.orders import Order as OrderModel, OrderItem as OrderItemModel
 
 
 async def check_category_id(category_id: int, db: AsyncSession) -> CategoryModel:
@@ -62,3 +63,27 @@ async def get_cart_item(user_id: int, product_id: int, db: AsyncSession) -> Cart
         )
     )
     return cart_item_db.first()
+
+
+async def get_cart_items(user_id: int, db: AsyncSession) -> list[CartItemModel]:
+    stmt = (
+        select(CartItemModel)
+        .options(selectinload(CartItemModel.product))
+        .where(CartItemModel.user_id == user_id)
+        .order_by(CartItemModel.id)
+        )
+    cart_items = (await db.scalars(stmt)).all()
+    if cart_items is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
+    return cart_items
+
+
+async def load_order_with_items(order_id: int, db: AsyncSession) -> OrderModel | None:
+    result = await db.scalars(
+        select(OrderModel)
+        .options(
+            selectinload(OrderModel.items).selectinload(OrderItemModel.product),
+        )
+        .where(OrderModel.id == order_id)
+    )
+    return result.first()

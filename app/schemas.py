@@ -140,7 +140,7 @@ class CartItemBase(BaseModel):
 class CartItemCreate(CartItemBase):
     """
     Добавление товара в корзину.
-    POST-запрос
+    POST-запросы
     """
     pass 
 
@@ -148,7 +148,7 @@ class CartItemCreate(CartItemBase):
 class CartItemUpdate(BaseModel):
     """
     Обновление количества товара в корзине.
-    PUT-запрос 
+    PUT-запросы
     """
     quantity: int = Field(ge=1, description="Количетсво товара")
 
@@ -156,7 +156,7 @@ class CartItemUpdate(BaseModel):
 class CartItem(BaseModel):
     """
     Позиция(товар) в корзине.
-    GET-запрос
+    GET-запросы
     """
     id: int = Field(description="ID позиции корзины")
     quantity: int = Field(ge=1, description="Количетсво товара")
@@ -168,7 +168,7 @@ class CartItem(BaseModel):
 class Cart(BaseModel):
     """
     Корзина пользователя.
-    GET-запрос
+    GET-запросы
     """
     user_id: int = Field(description="ID пользователя")
     items: list[CartItem] = Field(default_factory=list, description="Содержимое корзины")
@@ -177,4 +177,46 @@ class Cart(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    
+
+class OrderItem(BaseModel):
+    """
+    Позиция заказа.
+    GET-запросы
+    """
+    id: int = Field(description="ID позиции заказа")
+    product_id: int = Field(description="ID товара")
+    quantity: int = Field(ge=1, description="Количетсво товара")
+    unit_price: Decimal = Field(ge=0, description="Цена за единицу товара в момент покупки")
+    total_price: Decimal = Field(ge=0, description="Сумма по позиции")
+    product: Product | None = Field(None, description="Ифнормация о товаре")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Order(BaseModel):
+    """
+    Информация о заказе.
+    GET-запросы
+    """
+    id: int = Field(description="ID заказа")
+    user_id: int = Field(description="ID пользователя")
+    status: str = Field(description="Статус заказа")
+    total_amount: Decimal = Field(ge=0, description="Сумма заказа")
+    created_at: datetime = Field(description="Дата создания заказа")
+    updated_at: datetime = Field(description="Дата последнего обновления заказа")
+    items: list[OrderItem] = Field(default_factory=list, description="Список позиций")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OrderList(BaseModel):
+    """
+    Список всех заказов текущего пользователя.
+    GET-запросы
+    """
+    items: list[Order] = Field(description="Заказы на текущей странице")
+    total: int = Field(ge=0, description="Общее количество заказов")
+    page: int = Field(ge=1, description="Текущая страница")
+    page_size: int = Field(ge=1, description="Размер страницы")
+
+    model_config = ConfigDict(from_attributes=True)
