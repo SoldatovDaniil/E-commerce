@@ -124,8 +124,57 @@ class ProductList(BaseModel):
     Список пагинации для товаров.
     """
     items: list[Product] = Field(description="Товары для текущей страницы")
+    ranks: list[float] | None = Field(None, description="Ранги товаров в поиске")
     total: int = Field(ge=0, description="Общее количество товаров")
     page: int = Field(ge=1, description="Номер текущей страницы")
     page_size: int = Field(ge=1, description="Количество элементов на странице")
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class CartItemBase(BaseModel):
+    product_id: int = Field(description="ID товара")
+    quantity: int = Field(ge=1, description="Количетсво товара")
+
+
+class CartItemCreate(CartItemBase):
+    """
+    Добавление товара в корзину.
+    POST-запрос
+    """
+    pass 
+
+
+class CartItemUpdate(BaseModel):
+    """
+    Обновление количества товара в корзине.
+    PUT-запрос 
+    """
+    quantity: int = Field(ge=1, description="Количетсво товара")
+
+
+class CartItem(BaseModel):
+    """
+    Позиция(товар) в корзине.
+    GET-запрос
+    """
+    id: int = Field(description="ID позиции корзины")
+    quantity: int = Field(ge=1, description="Количетсво товара")
+    product: Product = Field(description="Ифнормация о товаре")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Cart(BaseModel):
+    """
+    Корзина пользователя.
+    GET-запрос
+    """
+    user_id: int = Field(description="ID пользователя")
+    items: list[CartItem] = Field(default_factory=list, description="Содержимое корзины")
+    total_quantity: int = Field(description="Общее количество позиций")
+    total_price: Decimal = Field(description="Общая стоимость")
+
+    model_config = ConfigDict(from_attributes=True)
+
+    

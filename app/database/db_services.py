@@ -1,10 +1,12 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.models.categories import Category as CategoryModel
 from app.models.products import Product as ProductModel
 from app.models.reviews import Review as ReviewModel
+from app.models.cart_items import CartItem as CartItemModel
 
 
 async def check_category_id(category_id: int, db: AsyncSession) -> CategoryModel:
@@ -23,7 +25,7 @@ async def check_product_id(product_id: int, db: AsyncSession) -> ProductModel:
     result = await db.scalars(stmt)
     product_db = result.first()
     if product_db is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or inactive")
     return product_db
 
 
@@ -48,3 +50,15 @@ async def check_review_id(review_id: int, db: AsyncSession) -> ReviewModel:
     if review_db is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     return review_db
+
+
+async def get_cart_item(user_id: int, product_id: int, db: AsyncSession) -> CartItemModel | None:
+    cart_item_db = await db.scalars(
+        select(CartItemModel)
+        .options(selectinload(CartItemModel.product))
+        .where(
+            CartItemModel.user_id == user_id,
+            CartItemModel.product_id == product_id
+        )
+    )
+    return cart_item_db.first()
