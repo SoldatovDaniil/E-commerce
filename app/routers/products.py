@@ -1,14 +1,15 @@
+from fastapi import File, HTTPException, UploadFile, status
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy import func, select, update, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.products import Product as ProductModel
-from app.models.categories import Category as CategoryModel
 from app.models.users import User as UserModel
 from app.database.db_depends import get_async_db
 from app.schemas import Product as ProductSchema, ProductCreate, ProductList
 from app.auth import get_current_seller
 from app.database.db_services import check_category_id, check_product_id
+from app.database.media import save_product_image, remove_product_image
 
 
 router = APIRouter(
@@ -104,16 +105,24 @@ async def get_all_products(page: int = Query(1, ge=1),
     
 
 @router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
-async def create_product(product: ProductCreate, 
-                         db: AsyncSession = Depends(get_async_db),
-                         current_user: UserModel = Depends(get_current_seller)
-                         ):
+async def create_product(
+    product: ProductCreate = Depends(ProductCreate.as_form),
+    image: UploadFile | None = File(None), 
+    db: AsyncSession = Depends(get_async_db),
+    current_user: UserModel = Depends(get_current_seller)
+):
     """
     Создаёт новый товар текущего продавца(роль: 'seller').
     """
     await check_category_id(product.category_id, db)
 
-    product_db = ProductModel(**product.model_dump(), seller_id=current_user.id)
+    image_url = await save_product_image(image) if image else None
+
+    product_db = ProductModel(
+        **product.model_dump(),
+        seller_id=current_user.id, 
+        image_url=image_url
+        )
     db.add(product_db)
     await db.commit()
     await db.refresh(product_db) 
@@ -145,10 +154,13 @@ async def get_product(product_id: int, db: AsyncSession = Depends(get_async_db))
 
 
 @router.put("/{product_id}", response_model=ProductSchema)
-async def update_product(product_id: int, product_update: ProductCreate, 
-                         db: AsyncSession = Depends(get_async_db),
-                         current_user: UserModel = Depends(get_current_seller)
-                         ):
+async def update_product(
+    product_id: int, 
+    product_update: ProductCreate = Depends(ProductCreate.as_form),
+    image: UploadFile | None = File(None),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: UserModel = Depends(get_current_seller)
+):
     """
     Обновляет товар текущего продавца по его ID(роль: 'seller').
     """
@@ -162,23 +174,32 @@ async def update_product(product_id: int, product_update: ProductCreate,
         .where(ProductModel.id == product_id)
         .values(**product_update.model_dump())
     )
+
+    if image is not None:
+        remove_product_image(product_db.image_url)
+        product_db.image_url = await save_product_image(image)
+
     await db.commit()
     await db.refresh(product_db)
     return product_db
 
 
 @router.delete("/{product_id}")
-async def delete_product(product_id: int, 
-                         db : AsyncSession = Depends(get_async_db),
-                         current_user: UserModel = Depends(get_current_seller)
-                         ):
+async def delete_product(
+    product_id: int, 
+    db : AsyncSession = Depends(get_async_db),
+    current_user: UserModel = Depends(get_current_seller)
+):
     """
     Удаляет товар текущего продавца по его ID(роль: 'seller').
     """
     product_db: ProductModel = await check_product_id(product_id, db)
     if product_db.seller_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only update your own products")
+
     product_db.is_active = False
+    remove_product_image(product_db.image_url)
+ 
     await db.commit()
     await db.refresh(product_db)
     return product_db
