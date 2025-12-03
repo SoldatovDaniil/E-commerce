@@ -8,8 +8,12 @@ from app.models.users import User as UserModel
 from app.schemas import UserCreate, User as UserSchema
 from app.database.db_depends import get_async_db
 from app.auth import create_refresh_token, hash_password, verify_password, create_access_token
-from app.config import SECRET_KEY, ALGORITHM
+from app.config import get_settings
 
+
+settings = get_settings()
+secret_key = settings.secret_key
+algorithm = settings.algorithm
 
 router = APIRouter(
     prefix="/users",
@@ -71,7 +75,7 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_async
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(refresh_token, secret_key, algorithms=[algorithm])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception

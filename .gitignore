@@ -3,3 +3,4 @@ venv/
 *.db
 .env
 info.log
+test.py

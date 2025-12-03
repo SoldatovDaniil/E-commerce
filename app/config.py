@@ -1,9 +1,18 @@
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
 
 
-load_dotenv()
+class Settings(BaseSettings):
+    database_url: str = "sqlite:///./local.db"
+    secret_key: str = "super_insecure_default_key"
+    algorithm: str = "algorithm"
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-DATABASE_URL = os.getenv("DATABASE_URL")
-ALGORITHM = "HS256"
+    model_config = SettingsConfigDict(
+        env_file=".env",              
+        env_file_encoding="utf-8"     
+    )
+
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
